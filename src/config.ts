@@ -15,6 +15,8 @@ interface FanXiaomiCustomConfig {
   angle_entity: string;
   /** Delay-off timer entity (select/number). Optional; auto-discovered by name when omitted. */
   timer_entity: string;
+  /** Child lock entity (switch). Optional; auto-discovered by name when omitted. */
+  child_lock_entity: string;
   /** Button entity pressed by the LEFT chevron. Optional. */
   turn_left_entity: string;
   /** Button entity pressed by the RIGHT chevron. Optional. */
@@ -33,6 +35,7 @@ export const defaultConfig: FanXiaomiCustomConfig = {
   model: "",
   angle_entity: "",
   timer_entity: "",
+  child_lock_entity: "",
   turn_left_entity: "",
   turn_right_entity: "",
 };

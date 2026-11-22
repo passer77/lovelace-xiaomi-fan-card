@@ -90,8 +90,15 @@ function createFanBladeHtml(): HTMLTemplateResult[] {
   return result;
 }
 
-function delayOffCountdownText(delay_off_countdown: number, model: string): string {
-  let timer_display = "Off";
+const i18n = (hass: any, en: string, zh: string): string =>
+  hass && String(hass.language || "").toLowerCase().startsWith("zh") ? zh : en;
+
+let registryCache: { entity_id: string; device_id: string }[] | null = null;
+let registryPromise: Promise<{ entity_id: string; device_id: string }[]> | null = null;
+const deviceEntitiesCache = new Map<string, DeviceEntities>();
+
+function delayOffCountdownText(hass: any, delay_off_countdown: number, model: string): string {
+  let timer_display = i18n(hass, "Off", "关");
   if (delay_off_countdown) {
     const total_mins = ["dmaker.fan.p15"].includes(model) ? delay_off_countdown / 60 : delay_off_countdown;
 
@@ -383,9 +390,21 @@ export class FanXiaomiCard extends LitElement {
   }
 
   private async findDeviceEntities(): Promise<DeviceEntities> {
-    const allEntities = await this.hass.callWS<{ entity_id: string; device_id: string }[]>({
-      type: "config/entity_registry/list",
-    });
+    const cached = deviceEntitiesCache.get(this.config.entity);
+    if (cached) {
+      return cached;
+    }
+    if (!registryPromise) {
+      registryPromise = this.hass
+        .callWS<{ entity_id: string; device_id: string }[]>({
+          type: "config/entity_registry/list",
+        })
+        .then((entities) => {
+          registryCache = entities;
+          return entities;
+        });
+    }
+    const allEntities = registryCache ?? (await registryPromise);
     const fanApiEntity = allEntities.find((e) => e.entity_id === this.config.entity);
     if (!fanApiEntity) {
       return {};
@@ -411,10 +430,14 @@ export class FanXiaomiCard extends LitElement {
                   (e.entity_id.startsWith("number.") || e.entity_id.startsWith("select.")) &&
                   (e.entity_id.includes("_delay_off_countdown") ||
                     e.entity_id.includes("countdown_time") ||
-                    e.entity_id.includes("off_delay_time")))
+                    e.entity_id.includes("off_delay_time"))) ||
+                (entityName === "childLock" &&
+                  e.entity_id.startsWith("switch.") &&
+                  e.entity_id.includes("_physical_control"))
             )?.entity_id;
     }
 
+    deviceEntitiesCache.set(this.config.entity, deviceEntityIds);
     return deviceEntityIds;
   }
 
@@ -529,6 +552,21 @@ export class FanXiaomiCard extends LitElement {
   }
 
   // https://lit.dev/docs/components/rendering/
+  @state() private _dragPct?: number;
+
+  private _onSpeedDrag(ev: Event): void {
+    this._dragPct = Number((ev.target as HTMLInputElement).value);
+  }
+
+  private _onSpeedSet(ev: Event): void {
+    const value = Number((ev.target as HTMLInputElement).value);
+    this._dragPct = undefined;
+    this.hass.callService("fan", "set_percentage", {
+      entity_id: this.config.entity,
+      percentage: value,
+    });
+  }
+
   protected render(): TemplateResult | void {
     const state = this.hass.states[this.config.entity];
 
@@ -553,6 +591,8 @@ export class FanXiaomiCard extends LitElement {
     const state = this.hass.states[this.config.entity];
 
     const speed_percentage = this.getSpeedPercentage();
+    const speedStep =
+      Number(this.hass.states[this.config.entity]?.attributes?.percentage_step) || 1;
     const child_lock = this.getChildLock();
     const oscillating = this.getOscillation();
     const delay_off_countdown = this.getTimer();
@@ -614,24 +654,39 @@ export class FanXiaomiCard extends LitElement {
       <div class="attr-row upper-container">
         ${child_lock !== undefined
           ? html`<div class="attr button-childlock" @click=${this.toggleChildLock}>
-              <p class="attr-title">Child Lock</p>
-              <p class="attr-value var-childlock">${child_lock ? "On" : "Off"}</p>
+              <p class="attr-title">${i18n(this.hass, "Child Lock", "童锁")}</p>
+              <p class="attr-value var-childlock">${child_lock ? i18n(this.hass, "On", "开") : i18n(this.hass, "Off", "关")}</p>
             </div>`
           : ""}
         ${this.supportedAttributes.angle
           ? html`<div class="attr button-angle" @click=${this.toggleOscillationAngle}>
-              <p class="attr-title">Angle(&deg;)</p>
+              <p class="attr-title">${i18n(this.hass, "Angle(°)", "夹角(°)")}</p>
               <p class="attr-value var-angle">${angle}</p>
             </div>`
           : ""}
         ${delay_off_countdown !== undefined
           ? html`<div class="attr button-timer" @click=${this.toggleTimer}>
-              <p class="attr-title">Timer</p>
-              <p class="attr-value var-timer">${delayOffCountdownText(delay_off_countdown, model)}</p>
+              <p class="attr-title">${i18n(this.hass, "Timer", "定时")}</p>
+              <p class="attr-value var-timer">${delayOffCountdownText(this.hass, delay_off_countdown, model)}</p>
             </div>`
           : ""}
       </div>
 
+      ${speed_percentage !== undefined
+        ? html`<div class="speed-slider ${state.state === "on" ? "on" : ""}">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="${speedStep}"
+              .value="${String(this._dragPct ?? (speed_percentage || 0))}"
+              style="--pct: ${this._dragPct ?? (speed_percentage || 0)}%"
+              ?disabled=${state.state !== "on"}
+              @input=${this._onSpeedDrag}
+              @change=${this._onSpeedSet}
+            />
+          </div>`
+        : ""}
       <div class="op-row">
         ${this.supportedAttributes.speedIncreaseDecreaseButtons
           ? html`<div class="op var-speedup" @click=${this.increaseSpeed}>
@@ -639,7 +694,7 @@ export class FanXiaomiCard extends LitElement {
                   <span class="icon-waper">
                     <ha-icon icon="mdi:fan-chevron-up"></ha-icon>
                   </span>
-                  Speed up
+                  ${i18n(this.hass, "Speed up", "加速")}
                 </button>
               </div>
               <div class="op var-speeddown" @click=${this.decreaseSpeed}>
@@ -647,7 +702,7 @@ export class FanXiaomiCard extends LitElement {
                   <span class="icon-waper">
                     <ha-icon icon="mdi:fan-chevron-down"></ha-icon>
                   </span>
-                  Speed down
+                  ${i18n(this.hass, "Speed down", "减速")}
                 </button>
               </div>`
           : html`<div
@@ -658,7 +713,7 @@ export class FanXiaomiCard extends LitElement {
                   <span class="icon-waper">
                     <ha-icon icon="mdi:numeric-${state.state === "on" ? speedLevel : 0}-box-outline"></ha-icon>
                   </span>
-                  Speed
+                  ${i18n(this.hass, "Speed", "速度")}
                 </button>
               </div>
               <div class="op var-oscillating ${oscillating ? "active" : ""}" @click=${this.toggleOscillation}>
@@ -666,7 +721,7 @@ export class FanXiaomiCard extends LitElement {
                   <span class="icon-waper">
                     <ha-icon icon="mdi:debug-step-over"></ha-icon>
                   </span>
-                  Oscillate
+                  ${i18n(this.hass, "Oscillate", "摆头")}
                 </button>
               </div>`}
         ${this.supportedAttributes.naturalSpeed
@@ -678,7 +733,7 @@ export class FanXiaomiCard extends LitElement {
                 <span class="icon-waper">
                   <ha-icon icon=${preset_mode === "nature" ? "mdi:leaf" : "mdi:weather-windy"}></ha-icon>
                 </span>
-                ${preset_mode === "nature" ? "Natural" : "Normal"}
+                ${preset_mode === "nature" ? i18n(this.hass, "Natural", "自然风") : i18n(this.hass, "Normal", "直吹风")}
               </button>
             </div>`
           : ""}
@@ -688,7 +743,7 @@ export class FanXiaomiCard extends LitElement {
                 <span class="icon-waper">
                   <ha-icon icon="mdi:power-sleep"></ha-icon>
                 </span>
-                Sleep
+                ${i18n(this.hass, "Sleep", "睡眠")}
               </button>
             </div>`
           : ""}
@@ -900,10 +955,38 @@ export class FanXiaomiCard extends LitElement {
       .attr-row .attr-value {
         font-size: 14px;
       }
+      .speed-slider {
+        margin: 0;
+      }
+      .speed-slider input[type="range"] {
+        width: 100%;
+        height: 4px;
+        -webkit-appearance: none;
+        appearance: none;
+        border-radius: 2px;
+        outline: none;
+        background: #3a3d42;
+      }
+      .speed-slider input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #9aa0a6;
+      }
+      .speed-slider.on input[type="range"] {
+        background: linear-gradient(to right, #01be9e var(--pct, 0%), #3a3d42 var(--pct, 0%));
+      }
+      .speed-slider.on input[type="range"]::-webkit-slider-thumb {
+        background: #fff;
+      }
+      .speed-slider:not(.on) input[type="range"] {
+        pointer-events: none;
+      }
       .op-row {
         display: flex;
-        padding: 10px;
-        border-top: 3px solid #717376 !important;
+        padding: 4px 10px 10px;
       }
       .op-row .op {
         width: 100%;
@@ -948,6 +1031,9 @@ export class FanXiaomiCard extends LitElement {
       }
       .fanbox.active.oscillation {
         animation: oscillate 8s infinite linear;
+      }
+      .fanbox.active .c3 {
+        border-color: #01be9e;
       }
       .blades div {
         position: absolute;
