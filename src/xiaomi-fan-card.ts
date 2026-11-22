@@ -4,7 +4,7 @@ import { customElement, property, state } from "lit/decorators";
 import { HomeAssistant, hasConfigOrEntityChanged, handleAction, LovelaceCardEditor } from "custom-card-helpers"; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
 
 import { FanXiaomiCardConfig, defaultConfig } from "./config";
-import { FanXiaomiCardEditor } from "./xiaomi-fan-card-editor";
+
 
 // Add the card to the UI card picker dialog
 (window as any).customCards = (window as any).customCards || [];
@@ -113,6 +113,7 @@ function delayOffCountdownText(delay_off_countdown: number, model: string): stri
 @customElement("fan-xiaomi")
 export class FanXiaomiCard extends LitElement {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
+    await import("./xiaomi-fan-card-editor");
     return document.createElement("fan-xiaomi-card-editor");
   }
 
