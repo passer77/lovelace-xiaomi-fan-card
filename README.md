@@ -65,10 +65,11 @@ turn_right_entity: button.dmaker_fan_p5_turn_right
 
 MIT（继承原项目）
 
-## 致谢 / Acknowledgements
+## 致谢 / Credits
 
-- **[ikaruswill](https://github.com/ikaruswill)** — 原作者，本项目的全部基础
-- 原项目贡献者：insajd 等 [contributors](https://github.com/ikaruswill/lovelace-fan-xiaomi/graphs/contributors)
-- [Devo919/Gewechat](https://github.com/Devo919/Gewechat) 社区与 Home Assistant 中文社区的测试反馈
+- **[finemeemb](https://github.com/fineemb/lovelace-fan-xiaomi)** — Original author / 原作者
+- [ikaruswill](https://github.com/ikaruswill/lovelace-fan-xiaomi) — 上游维护者 / upstream maintainer
+- [shoonianzhentan](https://github.com/shoonianzhentan)
+- 花神
 
 **Forked from [ikaruswill/lovelace-fan-xiaomi](https://github.com/ikaruswill/lovelace-fan-xiaomi)** — 上游停更后的增强维护版。
