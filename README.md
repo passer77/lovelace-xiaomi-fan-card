@@ -69,7 +69,7 @@ MIT（继承原项目）
 
 - **[finemeemb](https://github.com/fineemb/lovelace-fan-xiaomi)** — Original author / 原作者
 - [ikaruswill](https://github.com/ikaruswill/lovelace-fan-xiaomi) — 上游维护者 / upstream maintainer
-- [shoonianzhentan](https://github.com/shoonianzhentan)
+- shoonianzhentan
 - 花神
 
 **Forked from [ikaruswill/lovelace-fan-xiaomi](https://github.com/ikaruswill/lovelace-fan-xiaomi)** — 上游停更后的增强维护版。
