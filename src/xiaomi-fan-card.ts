@@ -4,12 +4,13 @@ import { customElement, property, state } from "lit/decorators";
 import { HomeAssistant, hasConfigOrEntityChanged, handleAction, LovelaceCardEditor } from "custom-card-helpers"; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
 
 import { FanXiaomiCardConfig, defaultConfig } from "./config";
+import { FanXiaomiCardEditor } from "./xiaomi-fan-card-editor";
 
 // Add the card to the UI card picker dialog
 (window as any).customCards = (window as any).customCards || [];
 (window as any).customCards.push({
   type: "fan-xiaomi",
-  name: "Xiaomi Fan Lovelace Card",
+  name: "小米风扇卡片 (Xiaomi Fan Card)",
   preview: true,
   description: "Xiaomi Smartmi Fan Lovelace card for HASS/Home Assistant.",
 });
@@ -112,7 +113,6 @@ function delayOffCountdownText(delay_off_countdown: number, model: string): stri
 @customElement("fan-xiaomi")
 export class FanXiaomiCard extends LitElement {
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
-    await import("./xiaomi-fan-card-editor");
     return document.createElement("fan-xiaomi-card-editor");
   }
 
@@ -163,6 +163,9 @@ export class FanXiaomiCard extends LitElement {
   }
 
   private getModel() {
+    if (this.config.model) {
+      return this.config.model;
+    }
     if (this.config.platform === "default") {
       return null;
     }
@@ -215,10 +218,18 @@ export class FanXiaomiCard extends LitElement {
 
   private setAngle(value) {
     if (this.deviceEntities.angle) {
-      this.hass.callService("number", "set_value", {
-        entity_id: this.deviceEntities.angle,
-        value: value,
-      });
+      const angleEntity = this.deviceEntities.angle;
+      if (angleEntity.startsWith("select.")) {
+        this.hass.callService("select", "select_option", {
+          entity_id: angleEntity,
+          option: String(value),
+        });
+      } else {
+        this.hass.callService("number", "set_value", {
+          entity_id: angleEntity,
+          value: value,
+        });
+      }
     } else {
       this.hass.callService(this.config.platform, "fan_set_oscillation_angle", {
         entity_id: this.config.entity,
@@ -256,9 +267,20 @@ export class FanXiaomiCard extends LitElement {
 
   private setPresetMode(value) {
     if (this.config.platform === "default") {
+      const modes: string[] = this.hass.states[this.config.entity].attributes["preset_modes"] || [];
+      const resolve = (wanted: string): string => {
+        const hit = modes.find((m) => m.trim().toLowerCase() === wanted.trim().toLowerCase());
+        return hit !== undefined ? hit : wanted;
+      };
+      const canonical = String(value).trim().toLowerCase();
+      const target = /^nature$|^自然风$/.test(canonical)
+        ? resolve("自然风")
+        : /^normal$|^直吹风$|^direct$/.test(canonical)
+        ? resolve("直吹风")
+        : resolve(value);
       this.hass.callService("fan", "set_preset_mode", {
         entity_id: this.config.entity,
-        preset_mode: value,
+        preset_mode: target,
       });
     } else {
       if (value === "Nature") {
@@ -279,7 +301,14 @@ export class FanXiaomiCard extends LitElement {
   private getPresetMode(): "nature" | "normal" | undefined {
     const attrs = this.hass.states[this.config.entity].attributes;
     if (this.config.platform === "default") {
-      return attrs["preset_mode"]?.toLowerCase();
+      const raw = attrs["preset_mode"]?.trim();
+      if (!raw) {
+        return undefined;
+      }
+      if (/自然风|^nature$|^natural$/i.test(raw)) {
+        return "nature";
+      }
+      return raw === "直吹风" ? "normal" : raw.toLowerCase();
     }
     return attrs["mode"]?.toLowerCase();
   }
@@ -357,9 +386,17 @@ export class FanXiaomiCard extends LitElement {
     const deviceEntityIds: DeviceEntities = {};
     for (const entityName of Object.keys(entityFilters)) {
       const { prefix, suffix } = entityFilters[entityName];
-      deviceEntityIds[entityName] = deviceEntities.find(
-        (e) => e.entity_id.startsWith(prefix) && e.entity_id.endsWith(suffix)
-      )?.entity_id;
+      deviceEntityIds[entityName] =
+        entityName === "angle" && this.config.angle_entity
+          ? this.config.angle_entity
+          : deviceEntities.find(
+              (e) =>
+                (e.entity_id.startsWith(prefix) && e.entity_id.endsWith(suffix)) ||
+                (entityName === "angle" &&
+                  (e.entity_id.startsWith("number.") || e.entity_id.startsWith("select.")) &&
+                  (e.entity_id.includes("_oscillation_angle") ||
+                    e.entity_id.includes("_horizontal_swing_included_angle")))
+            )?.entity_id;
     }
 
     return deviceEntityIds;
@@ -369,7 +406,9 @@ export class FanXiaomiCard extends LitElement {
     if (
       attributes.preset_mode &&
       attributes.preset_modes &&
-      attributes.preset_modes.some((m) => m.toLowerCase() === "nature")
+      attributes.preset_modes.some(
+        (m) => m.trim().toLowerCase() === "nature" || m.trim() === "自然风"
+      )
     ) {
       this.supportedAttributes.naturalSpeed = true;
     }
@@ -379,7 +418,9 @@ export class FanXiaomiCard extends LitElement {
     if (this.deviceEntities.angle) {
       this.supportedAttributes.angle = true;
       const attr = this.hass.states[this.deviceEntities.angle].attributes;
-      if (attr.min && attr.max && attr.step) {
+      if (Array.isArray(attr.options)) {
+        this.supportedAttributes.supportedAngles = (attr.options as string[]).map(Number);
+      } else if (attr.min && attr.max && attr.step) {
         const angles: number[] = [];
         for (let a = attr.min as number; a <= attr.max; a += attr.step) {
           angles.push(a);
@@ -536,7 +577,11 @@ export class FanXiaomiCard extends LitElement {
                 </span>
               </div>
               <div class="c1" @click=${this.toggleOnOff}></div>
-              ${this.supportedAttributes.rotationAngle
+              ${this.config.turn_left_entity ||
+                this.config.turn_right_entity ||
+                (this.supportedAttributes.rotationAngle &&
+                  (this.config.platform !== "default" ||
+                    void 0 !== this.hass.states[this.config.entity].attributes["direction"]))
                 ? html`<div class="chevron left" @click=${this.rotateLeft}>
                       <span class="icon-waper">
                         <ha-icon icon="mdi:chevron-left"></ha-icon>
@@ -658,6 +703,11 @@ export class FanXiaomiCard extends LitElement {
   }
 
   private rotateLeft(): void {
+    const turnEntity = this.config.turn_left_entity;
+    if (turnEntity) {
+      this.hass.callService("button", "press", { entity_id: turnEntity });
+      return;
+    }
     this.hass.callService("fan", "set_direction", {
       entity_id: this.config.entity,
       direction: this.config.platform === "default" ? "reverse" : "left",
@@ -665,6 +715,11 @@ export class FanXiaomiCard extends LitElement {
   }
 
   private rotateRight(): void {
+    const turnEntity = this.config.turn_right_entity;
+    if (turnEntity) {
+      this.hass.callService("button", "press", { entity_id: turnEntity });
+      return;
+    }
     this.hass.callService("fan", "set_direction", {
       entity_id: this.config.entity,
       direction: this.config.platform === "default" ? "forward" : "right",

@@ -87,6 +87,30 @@ export class FanXiaomiCardEditor extends ScopedRegistryHost(LitElement) implemen
           return html`<mwc-list-item .value=${entity}>${entity}</mwc-list-item>`;
         })}
       </mwc-select>
+      <mwc-textfield
+        label="Model override (Optional, e.g. dmaker.fan.p5)"
+        .value=${config.model}
+        .configValue=${"model"}
+        @input=${this._valueChanged}
+      ></mwc-textfield>
+      <mwc-textfield
+        label="Swing angle entity (Optional: select/number)"
+        .value=${config.angle_entity}
+        .configValue=${"angle_entity"}
+        @input=${this._valueChanged}
+      ></mwc-textfield>
+      <mwc-textfield
+        label="Turn LEFT button entity (Optional)"
+        .value=${config.turn_left_entity}
+        .configValue=${"turn_left_entity"}
+        @input=${this._valueChanged}
+      ></mwc-textfield>
+      <mwc-textfield
+        label="Turn RIGHT button entity (Optional)"
+        .value=${config.turn_right_entity}
+        .configValue=${"turn_right_entity"}
+        @input=${this._valueChanged}
+      ></mwc-textfield>
       <mwc-formfield label="Show sleep mode button">
         <mwc-switch
           .checked=${config.force_sleep_mode_support}
