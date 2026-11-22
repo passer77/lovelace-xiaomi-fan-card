@@ -192,10 +192,18 @@ export class FanXiaomiCard extends LitElement {
 
   private setTimer(value: number) {
     if (this.deviceEntities.timer) {
-      this.hass.callService("number", "set_value", {
-        entity_id: this.deviceEntities.timer,
-        value: value,
-      });
+      const timerEntity = this.deviceEntities.timer;
+      if (timerEntity.startsWith("select.")) {
+        this.hass.callService("select", "select_option", {
+          entity_id: timerEntity,
+          option: String(value),
+        });
+      } else {
+        this.hass.callService("number", "set_value", {
+          entity_id: timerEntity,
+          value: value,
+        });
+      }
     } else {
       this.hass.callService(this.config.platform, "fan_set_delay_off", {
         entity_id: this.config.entity,
@@ -390,13 +398,20 @@ export class FanXiaomiCard extends LitElement {
       deviceEntityIds[entityName] =
         entityName === "angle" && this.config.angle_entity
           ? this.config.angle_entity
+          : entityName === "timer" && this.config.timer_entity
+          ? this.config.timer_entity
           : deviceEntities.find(
               (e) =>
                 (e.entity_id.startsWith(prefix) && e.entity_id.endsWith(suffix)) ||
                 (entityName === "angle" &&
                   (e.entity_id.startsWith("number.") || e.entity_id.startsWith("select.")) &&
                   (e.entity_id.includes("_oscillation_angle") ||
-                    e.entity_id.includes("_horizontal_swing_included_angle")))
+                    e.entity_id.includes("_horizontal_swing_included_angle"))) ||
+                (entityName === "timer" &&
+                  (e.entity_id.startsWith("number.") || e.entity_id.startsWith("select.")) &&
+                  (e.entity_id.includes("_delay_off_countdown") ||
+                    e.entity_id.includes("countdown_time") ||
+                    e.entity_id.includes("off_delay_time")))
             )?.entity_id;
     }
 
@@ -661,9 +676,9 @@ export class FanXiaomiCard extends LitElement {
             >
               <button>
                 <span class="icon-waper">
-                  <ha-icon icon="mdi:leaf"></ha-icon>
+                  <ha-icon icon=${preset_mode === "nature" ? "mdi:leaf" : "mdi:weather-windy"}></ha-icon>
                 </span>
-                Natural
+                ${preset_mode === "nature" ? "Natural" : "Normal"}
               </button>
             </div>`
           : ""}

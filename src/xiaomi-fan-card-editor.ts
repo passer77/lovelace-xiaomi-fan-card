@@ -53,53 +53,48 @@ export class FanXiaomiCardEditor extends LitElement implements LovelaceCardEdito
       </div>
       <div class="field">
         <label>Swing angle entity (Optional: select/number)</label>
-        <input
-          type="text"
+        <ha-entity-picker
+          .hass=${this.hass}
           .value=${config.angle_entity}
           .configValue=${"angle_entity"}
+          @value-changed=${this._valueChanged}
+          .includeDomains=${["select", "number"]}
+          allow-custom-entity
+        ></ha-entity-picker>
+      </div>
+      <div class="field">
+        <label>Delay-off timer entity (Optional: select/number)</label>
+        <input
+          type="text"
+          .value=${config.timer_entity}
+          .configValue=${"timer_entity"}
           @input=${this._valueChanged}
-          placeholder="select.xxx_horizontal_swing_included_angle"
+          placeholder="number.xxx_countdown_time"
         />
       </div>
       <div class="field">
         <label>Turn LEFT button entity (Optional)</label>
-        <input
-          type="text"
+        <ha-entity-picker
+          .hass=${this.hass}
           .value=${config.turn_left_entity}
           .configValue=${"turn_left_entity"}
-          @input=${this._valueChanged}
-          placeholder="button.xxx_turn_left"
-        />
+          @value-changed=${this._valueChanged}
+          .includeDomains=${["button"]}
+          allow-custom-entity
+        ></ha-entity-picker>
       </div>
       <div class="field">
         <label>Turn RIGHT button entity (Optional)</label>
-        <input
-          type="text"
+        <ha-entity-picker
+          .hass=${this.hass}
           .value=${config.turn_right_entity}
           .configValue=${"turn_right_entity"}
-          @input=${this._valueChanged}
-          placeholder="button.xxx_turn_right"
-        />
+          @value-changed=${this._valueChanged}
+          .includeDomains=${["button"]}
+          allow-custom-entity
+        ></ha-entity-picker>
       </div>
-      <div class="field half">
-        <label>Turn LEFT label</label>
-        <input
-          type="text"
-          .value=${config.turn_left_name}
-          .configValue=${"turn_left_name"}
-          @input=${this._valueChanged}
-        />
-      </div>
-      <div class="field half">
-        <label>Turn RIGHT label</label>
-        <input
-          type="text"
-          .value=${config.turn_right_name}
-          .configValue=${"turn_right_name"}
-          @input=${this._valueChanged}
-        />
-      </div>
-      <div class="field">
+            <div class="field">
         <label class="check">
           <input
             type="checkbox"

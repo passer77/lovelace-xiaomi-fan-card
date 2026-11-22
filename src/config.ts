@@ -13,12 +13,12 @@ interface FanXiaomiCustomConfig {
   model: string;
   /** Swing angle entity (select/number). Optional; auto-discovered by name when omitted. */
   angle_entity: string;
+  /** Delay-off timer entity (select/number). Optional; auto-discovered by name when omitted. */
+  timer_entity: string;
   /** Button entity pressed by the LEFT chevron. Optional. */
   turn_left_entity: string;
   /** Button entity pressed by the RIGHT chevron. Optional. */
   turn_right_entity: string;
-  turn_left_name: string;
-  turn_right_name: string;
 }
 
 export interface FanXiaomiCardConfig extends LovelaceCardConfig, FanXiaomiCustomConfig {}
@@ -32,8 +32,7 @@ export const defaultConfig: FanXiaomiCustomConfig = {
   hide_led_button: false,
   model: "",
   angle_entity: "",
+  timer_entity: "",
   turn_left_entity: "",
   turn_right_entity: "",
-  turn_left_name: "左步进",
-  turn_right_name: "右步进",
 };
