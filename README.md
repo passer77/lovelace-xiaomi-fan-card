@@ -1,5 +1,7 @@
 # 小米风扇卡片 (Xiaomi Fan Card)
 
+> Forked from [ikaruswill/lovelace-fan-xiaomi](https://github.com/ikaruswill/lovelace-fan-xiaomi)
+
 基于 [ikaruswill/lovelace-fan-xiaomi](https://github.com/ikaruswill/lovelace-fan-xiaomi) v2.2.4 的增强维护版，修复其在新版 Home Assistant + 米家 (xiaomi_miot) / 小米官方 (ha_xiaomi_home) 集成下的兼容问题，并为中文环境优化。
 
 > 原仓库自 2023-07 起停止维护。本项目在其基础上继续演进，感谢原作者。
@@ -62,3 +64,11 @@ turn_right_entity: button.dmaker_fan_p5_turn_right
 ## 许可
 
 MIT（继承原项目）
+
+## 致谢 / Acknowledgements
+
+- **[ikaruswill](https://github.com/ikaruswill)** — 原作者，本项目的全部基础
+- 原项目贡献者：insajd 等 [contributors](https://github.com/ikaruswill/lovelace-fan-xiaomi/graphs/contributors)
+- [Devo919/Gewechat](https://github.com/Devo919/Gewechat) 社区与 Home Assistant 中文社区的测试反馈
+
+**Forked from [ikaruswill/lovelace-fan-xiaomi](https://github.com/ikaruswill/lovelace-fan-xiaomi)** — 上游停更后的增强维护版。
